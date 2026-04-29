@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ストップウォッチ</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    h1 { font-size: 1.2rem; letter-spacing: 4px; color: #888; margin-bottom: 40px; text-transform: uppercase; }
+
+    .display {
+      font-size: 6rem;
+      font-weight: 200;
+      letter-spacing: 8px;
+      font-variant-numeric: tabular-nums;
+      color: #e0e0ff;
+      text-shadow: 0 0 30px rgba(120, 100, 255, 0.5);
+      margin-bottom: 12px;
+    }
+
+    .milliseconds {
+      font-size: 2rem;
+      color: #666;
+      letter-spacing: 4px;
+      margin-bottom: 50px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    button {
+      padding: 14px 36px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    #btn-start {
+      background: #7c6cfc;
+      color: white;
+      min-width: 120px;
+    }
+    #btn-start:hover { background: #9580ff; transform: scale(1.05); }
+
+    #btn-reset {
+      background: #2a2a4a;
+      color: #aaa;
+      border: 1px solid #3a3a5a;
+    }
+    #btn-reset:hover { background: #3a3a5a; color: #eee; }
+
+    #btn-lap {
+      background: #2a2a4a;
+      color: #aaa;
+      border: 1px solid #3a3a5a;
+    }
+    #btn-lap:hover { background: #3a3a5a; color: #eee; }
+
+    .laps {
+      width: 360px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .laps::-webkit-scrollbar { width: 4px; }
+    .laps::-webkit-scrollbar-track { background: transparent; }
+    .laps::-webkit-scrollbar-thumb { background: #3a3a5a; border-radius: 2px; }
+
+    .lap-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid #2a2a4a;
+      font-size: 0.9rem;
+      color: #888;
+    }
+
+    .lap-item:first-child { color: #b0a8ff; }
+    .lap-item .lap-num { font-weight: 600; }
+    .lap-item .lap-time { font-variant-numeric: tabular-nums; }
+    .lap-item .lap-split { color: #555; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>ストップウォッチ</h1>
+  <div class="display" id="display">00:00:00</div>
+  <div class="milliseconds" id="ms">00</div>
+  <div class="controls">
+    <button id="btn-lap" onclick="lap()">ラップ</button>
+    <button id="btn-start" onclick="toggle()">スタート</button>
+    <button id="btn-reset" onclick="reset()">リセット</button>
+  </div>
+  <div class="laps" id="laps"></div>
+
+  <script>
+    let running = false;
+    let startTime = 0;
+    let elapsed = 0;
+    let rafId = null;
+    let laps = [];
+    let lastLapTime = 0;
+
+    function fmt(ms) {
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      const cs = Math.floor((ms % 1000) / 10);
+      return [
+        String(h).padStart(2, '0'),
+        String(m).padStart(2, '0'),
+        String(s).padStart(2, '0'),
+        String(cs).padStart(2, '0')
+      ];
+    }
+
+    function update() {
+      const now = elapsed + (running ? Date.now() - startTime : 0);
+      const [h, m, s, cs] = fmt(now);
+      document.getElementById('display').textContent = `${h}:${m}:${s}`;
+      document.getElementById('ms').textContent = cs;
+      if (running) rafId = requestAnimationFrame(update);
+    }
+
+    function toggle() {
+      if (running) {
+        elapsed += Date.now() - startTime;
+        running = false;
+        cancelAnimationFrame(rafId);
+        document.getElementById('btn-start').textContent = 'スタート';
+        document.getElementById('btn-start').style.background = '#7c6cfc';
+      } else {
+        startTime = Date.now();
+        running = true;
+        document.getElementById('btn-start').textContent = 'ストップ';
+        document.getElementById('btn-start').style.background = '#fc6c7c';
+        update();
+      }
+    }
+
+    function reset() {
+      running = false;
+      cancelAnimationFrame(rafId);
+      elapsed = 0;
+      laps = [];
+      lastLapTime = 0;
+      document.getElementById('display').textContent = '00:00:00';
+      document.getElementById('ms').textContent = '00';
+      document.getElementById('btn-start').textContent = 'スタート';
+      document.getElementById('btn-start').style.background = '#7c6cfc';
+      document.getElementById('laps').innerHTML = '';
+    }
+
+    function lap() {
+      if (!running && elapsed === 0) return;
+      const now = elapsed + (running ? Date.now() - startTime : 0);
+      const split = now - lastLapTime;
+      lastLapTime = now;
+      laps.unshift({ n: laps.length + 1, total: now, split });
+      renderLaps();
+    }
+
+    function renderLaps() {
+      const container = document.getElementById('laps');
+      container.innerHTML = laps.map((l, i) => {
+        const [h, m, s, cs] = fmt(l.total);
+        const [sh, sm, ss, scs] = fmt(l.split);
+        return `<div class="lap-item">
+          <span class="lap-num">ラップ ${l.n}</span>
+          <span class="lap-split">+${sh}:${sm}:${ss}.${scs}</span>
+          <span class="lap-time">${h}:${m}:${s}.${cs}</span>
+        </div>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
