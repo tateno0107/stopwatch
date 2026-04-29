@@ -23,4 +23,4 @@ start index.html
 
 [Vercel](https://vercel.com/) で公開しています。`index.html` がリポジトリのルートにあるため、Framework Preset を `Other` にし、Build / Output 設定は空のままで Deploy できます。
 
-公開 URL: _（Vercel デプロイ後にここに追記）_
+公開 URL: <https://stopwatch-murex-iota.vercel.app>
